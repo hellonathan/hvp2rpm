@@ -1,0 +1,67 @@
+#! /bin/tcsh -f
+# $Id: makefile 29704 2011-08-29 06:23:29Z kyle $
+# (c) Holly Australia Pty Ltd 2012
+
+# Setup the Holly environment
+source $HOME/.holly_setup
+
+umask 077
+
+# General shell
+setenv EDITOR /bin/vi
+
+set prompt = "%n@%m:%/> "
+set history = 250
+set savehist = 250 merge
+
+alias h history
+alias k 'ps -ef|grep \!*|cut -c10-14| xargs kill'
+alias p 'ps -ef|grep -v grep|grep \!*'
+
+if ( `uname -s` == "SunOS" ) then
+    setenv LD_LIBRARY_PATH ${HOLLY_SOBJECT_PATH}:/opt/csw/lib:$HOME/httpd/lib:/usr/lib
+else
+    setenv LD_LIBRARY_PATH ${HOLLY_SOBJECT_PATH}:$HOME/httpd/lib:/usr/lib
+endif
+
+setenv RUBY_ROOT ${HOME}/.rubies/ruby-2.4.3
+setenv RUBY_OPT ""
+setenv RUBY_ENGINE ruby
+setenv RUBY_VERSION 2.4.3
+
+setenv GEM_HOME ${HOME}/.gem/ruby/2.4.3
+setenv GEM_ROOT ${RUBY_ROOT}/lib/ruby/gems/2.4.0
+setenv GEM_PATH ${GEM_HOME}:${GEM_ROOT}
+
+unsetenv CLASSPATH
+setenv PATH ${HOLLY_BIN_PATH}:${GEM_HOME}/bin:${GEM_ROOT}/bin:${RUBY_ROOT}/bin:/bin:/opt/csw/bin:/usr/bin:/usr/sbin:/usr/ccs/bin:/usr/ucb:/sbin:${HOME}/httpd/bin:${HOME}/bin/unsupported
+
+# Set a 'vim' alias
+which vim >& /dev/null
+if ( "$status" == "0" ) then
+    alias vi 'vim \!*'
+else if ( -x "/usr/local/bin/vim" ) then
+    alias vim /usr/local/bin/vim
+    # If it's in /usr/local/bin then it probably depends on /usr/local/lib:
+    setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/lib
+    alias vi 'vim \!*'
+endif
+
+# Ensure no FQDN in HOST and HOSTNAME
+setenv HOST `/bin/hostname`
+setenv HOSTNAME `/bin/hostname`
+setenv FQDN `/bin/hostname`
+setenv IP `ip -4 addr show scope global|grep "inet "| grep -v "0.0.0.0" | awk '{{ print $2 }}'|cut -d"/" -f1`
+echo "127.0.0.1 localhost" > hosts
+echo "$IP $HOSTNAME" >> hosts
+echo "$HOSTNAME" > hostname
+sudo cp hosts /etc/hosts
+sudo cp hostname /etc/hostname
+setenv CS $HOSTNAME\:6399
+setenv OLDHOST `cat orig_hostname`
+sed -i "s/$OLDHOST/$HOSTNAME/g" httpd/conf/httpd.conf
+hvpctl start
+
+
+
+
